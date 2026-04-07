@@ -5,7 +5,7 @@ import '../../data/repositories/mock_feed_repository.dart';
 import 'feed_state.dart';
 
 final feedRepositoryProvider = Provider<FeedRepository>(
-  (ref) => const MockFeedRepository(),
+  (ref) => MockFeedRepository(),
 );
 
 final feedViewModelProvider =
@@ -53,6 +53,33 @@ class FeedViewModel extends AutoDisposeNotifier<FeedState> {
       nextPageKey: state.nextPageKey + 1,
       isLoadingMore: false,
       hasMore: nextItems.length == state.pageSize,
+    );
+  }
+
+  Future<void> toggleLike(String videoId) async {
+    final updated = await ref.read(feedRepositoryProvider).toggleLike(videoId);
+    if (updated == null) {
+      return;
+    }
+
+    _replaceVideo(updated);
+  }
+
+  Future<void> likeWithDoubleTap(String videoId) async {
+    final updated = await ref.read(feedRepositoryProvider).like(videoId);
+    if (updated == null) {
+      return;
+    }
+
+    _replaceVideo(updated);
+  }
+
+  void _replaceVideo(updatedVideo) {
+    state = state.copyWith(
+      items: [
+        for (final video in state.items)
+          if (video.id == updatedVideo.id) updatedVideo else video,
+      ],
     );
   }
 }

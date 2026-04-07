@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -8,10 +10,14 @@ class FeedVideoPreviewCard extends StatefulWidget {
     super.key,
     required this.video,
     required this.isActive,
+    required this.onToggleLike,
+    required this.onDoubleTapLike,
   });
 
   final FeedVideo video;
   final bool isActive;
+  final VoidCallback onToggleLike;
+  final VoidCallback onDoubleTapLike;
 
   @override
   State<FeedVideoPreviewCard> createState() => _FeedVideoPreviewCardState();
@@ -23,6 +29,8 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
   late final Future<void> _initializeVideoFuture;
   bool _resumeAfterLifecycle = false;
   bool _manuallyPaused = false;
+  bool _showLikeBurst = false;
+  Timer? _likeBurstTimer;
 
   @override
   void initState() {
@@ -110,9 +118,56 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
     }
   }
 
+  void _handleDoubleTapLike() {
+    widget.onDoubleTapLike();
+    _restartLikeBurst();
+  }
+
+  void _restartLikeBurst() {
+    _likeBurstTimer?.cancel();
+
+    if (_showLikeBurst) {
+      setState(() {
+        _showLikeBurst = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+
+        _showLikeAnimation();
+      });
+      return;
+    }
+
+    _showLikeAnimation();
+  }
+
+  void _showLikeAnimation() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _showLikeBurst = true;
+    });
+
+    _likeBurstTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _showLikeBurst = false;
+      });
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _likeBurstTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -169,10 +224,20 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
                           ),
                         ),
                       ),
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _togglePlayback,
+                          onDoubleTap: _handleDoubleTapLike,
+                        ),
+                      ),
                       Positioned(
                         right: 16,
                         bottom: actionBottomInset,
-                        child: _ActionColumn(video: widget.video),
+                        child: _ActionColumn(
+                          video: widget.video,
+                          onToggleLike: widget.onToggleLike,
+                        ),
                       ),
                       Positioned(
                         left: 16,
@@ -210,6 +275,24 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
                         const Center(
                           child: _PlayOverlayButton(),
                         ),
+                      IgnorePointer(
+                        child: Center(
+                          child: AnimatedOpacity(
+                            opacity: _showLikeBurst ? 1 : 0,
+                            duration: const Duration(milliseconds: 180),
+                            child: AnimatedScale(
+                              scale: _showLikeBurst ? 1 : 0.4,
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutBack,
+                              child: const Icon(
+                                Icons.favorite,
+                                color: Colors.white,
+                                size: 104,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       Positioned(
                         left: 0,
                         right: 0,
@@ -235,14 +318,6 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
                 },
               );
             },
-          ),
-          Positioned.fill(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _togglePlayback,
-              ),
-            ),
           ),
           SafeArea(
             child: Padding(
@@ -335,9 +410,11 @@ class _PlayOverlayButton extends StatelessWidget {
 class _ActionColumn extends StatelessWidget {
   const _ActionColumn({
     required this.video,
+    required this.onToggleLike,
   });
 
   final FeedVideo video;
+  final VoidCallback onToggleLike;
 
   @override
   Widget build(BuildContext context) {
@@ -347,8 +424,10 @@ class _ActionColumn extends StatelessWidget {
         const _ProfileActionBadge(),
         const SizedBox(height: 22),
         _ActionStat(
-          icon: Icons.favorite,
+          icon: video.isLiked ? Icons.favorite : Icons.favorite_border,
           value: video.likes,
+          iconColor: video.isLiked ? const Color(0xFFFF2D55) : Colors.white,
+          onTap: onToggleLike,
         ),
         const SizedBox(height: 20),
         _ActionStat(
@@ -418,31 +497,42 @@ class _ActionStat extends StatelessWidget {
   const _ActionStat({
     required this.icon,
     required this.value,
+    this.iconColor = Colors.white,
+    this.onTap,
   });
 
   final IconData icon;
   final int value;
+  final Color iconColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: Colors.white,
-          size: 32,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 44,
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: iconColor,
+              size: 32,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _formatCount(value),
+              style: textTheme.bodySmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          _formatCount(value),
-          style: textTheme.bodySmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+      ),
     );
   }
 

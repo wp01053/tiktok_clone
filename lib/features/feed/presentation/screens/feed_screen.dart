@@ -50,6 +50,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(feedViewModelProvider);
+    final notifier = ref.read(feedViewModelProvider.notifier);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -67,6 +68,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 return FeedVideoPreviewCard(
                   video: video,
                   isActive: index == state.currentIndex,
+                  onToggleLike: () {
+                    notifier.toggleLike(video.id);
+                  },
+                  onDoubleTapLike: () {
+                    notifier.likeWithDoubleTap(video.id);
+                  },
                 );
               },
             ),

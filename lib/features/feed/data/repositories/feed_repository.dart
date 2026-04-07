@@ -7,4 +7,8 @@ abstract class FeedRepository {
     required int pageKey,
     required int pageSize,
   });
+
+  Future<FeedVideo?> toggleLike(String videoId);
+
+  Future<FeedVideo?> like(String videoId);
 }
