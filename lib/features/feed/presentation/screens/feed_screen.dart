@@ -5,30 +5,71 @@ import '../../data/models/feed_video.dart';
 import '../view_models/feed_view_model.dart';
 import '../widgets/feed_video_preview_card.dart';
 
-class FeedScreen extends ConsumerWidget {
+class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends ConsumerState<FeedScreen> {
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  bool _handleScrollEnd(ScrollEndNotification notification) {
+    if (notification.depth != 0) {
+      return false;
+    }
+
+    final double? page = _pageController.page;
+    if (page == null) {
+      return false;
+    }
+
+    final state = ref.read(feedViewModelProvider);
+    if (state.items.isEmpty) {
+      return false;
+    }
+
+    final settledIndex = page.round().clamp(0, state.items.length - 1);
+    ref.read(feedViewModelProvider.notifier).setCurrentIndex(settledIndex);
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(feedViewModelProvider);
-    final notifier = ref.read(feedViewModelProvider.notifier);
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          PageView.builder(
-            scrollDirection: Axis.vertical,
-            itemCount: state.items.length,
-            onPageChanged: notifier.setCurrentIndex,
-            itemBuilder: (context, index) {
-              final FeedVideo video = state.items[index];
+          NotificationListener<ScrollEndNotification>(
+            onNotification: _handleScrollEnd,
+            child: PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              itemCount: state.items.length,
+              itemBuilder: (context, index) {
+                final FeedVideo video = state.items[index];
 
-              return FeedVideoPreviewCard(
-                video: video,
-                isActive: index == state.currentIndex,
-              );
-            },
+                return FeedVideoPreviewCard(
+                  video: video,
+                  isActive: index == state.currentIndex,
+                );
+              },
+            ),
           ),
           SafeArea(
             child: Padding(
