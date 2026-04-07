@@ -11,25 +11,55 @@ class FeedScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(feedViewModelProvider);
-    final FeedVideo? previewVideo =
-        state.previewItems.isEmpty ? null : state.previewItems.first;
-    final textTheme = Theme.of(context).textTheme;
+    final notifier = ref.read(feedViewModelProvider.notifier);
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'TikTok Clone',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            scrollDirection: Axis.vertical,
+            itemCount: state.items.length,
+            onPageChanged: notifier.setCurrentIndex,
+            itemBuilder: (context, index) {
+              final FeedVideo video = state.items[index];
+
+              return FeedVideoPreviewCard(
+                video: video,
+                isActive: index == state.currentIndex,
+              );
+            },
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [],
               ),
             ),
-            const SizedBox(height: 24),
-            if (previewVideo != null) FeedVideoPreviewCard(video: previewVideo),
-          ],
-        ),
+          ),
+          if (state.isLoadingMore)
+            const Positioned(
+              right: 20,
+              bottom: 32,
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.8,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          if (state.items.isEmpty)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -30,7 +31,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('TikTok Clone'), findsOneWidget);
+    expect(find.byType(PageView), findsOneWidget);
     expect(find.byType(FeedVideoPreviewCard), findsOneWidget);
   });
 }

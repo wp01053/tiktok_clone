@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/feed_video.dart';
 import '../../data/repositories/feed_repository.dart';
 import '../../data/repositories/mock_feed_repository.dart';
 import 'feed_state.dart';
@@ -18,16 +17,42 @@ class FeedViewModel extends AutoDisposeNotifier<FeedState> {
   @override
   FeedState build() {
     final repository = ref.watch(feedRepositoryProvider);
+    final initialItems = repository.previewItems;
 
     return FeedState(
-      previewItems: repository.previewItems,
+      items: initialItems,
+      hasMore: initialItems.length == const FeedState().pageSize,
     );
   }
 
-  Future<List<FeedVideo>> fetchPage(int pageKey) {
-    return ref.read(feedRepositoryProvider).fetchPage(
-          pageKey: pageKey,
+  void setCurrentIndex(int index) {
+    state = state.copyWith(currentIndex: index);
+
+    if (index >= state.items.length - 2) {
+      loadNextPage();
+    }
+  }
+
+  Future<void> loadNextPage() async {
+    if (state.isLoadingMore || !state.hasMore) {
+      return;
+    }
+
+    state = state.copyWith(isLoadingMore: true);
+
+    final nextItems = await ref.read(feedRepositoryProvider).fetchPage(
+          pageKey: state.nextPageKey,
           pageSize: state.pageSize,
         );
+
+    state = state.copyWith(
+      items: [
+        ...state.items,
+        ...nextItems,
+      ],
+      nextPageKey: state.nextPageKey + 1,
+      isLoadingMore: false,
+      hasMore: nextItems.length == state.pageSize,
+    );
   }
 }
