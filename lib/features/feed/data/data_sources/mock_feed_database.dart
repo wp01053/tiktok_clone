@@ -13,6 +13,9 @@ class MockFeedDatabase {
     'https://media.w3.org/2010/05/video/movie_300.mp4',
   ];
 
+  static const String _thumbnailUrl =
+      'https://picsum.photos/id/870/200/300?grayscale&blur=2';
+
   static const List<String> _creatorPool = [
     '@daily.loop',
     '@campus.cut',
@@ -103,6 +106,7 @@ class MockFeedDatabase {
       creator: creator,
       description: '$description #${index + 1}',
       videoUrl: videoUrl,
+      thumbnailUrl: _thumbnailUrl,
       likes: 3200 + ((index * 913) % 78000),
       comments: 48 + ((index * 37) % 3400),
       shares: 12 + ((index * 19) % 1400),

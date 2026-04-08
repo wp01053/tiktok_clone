@@ -9,12 +9,16 @@ class FeedVideoPreviewCard extends StatefulWidget {
   const FeedVideoPreviewCard({
     super.key,
     required this.video,
+    required this.controller,
+    required this.initializeVideoFuture,
     required this.isActive,
     required this.onToggleLike,
     required this.onDoubleTapLike,
   });
 
   final FeedVideo video;
+  final VideoPlayerController controller;
+  final Future<void> initializeVideoFuture;
   final bool isActive;
   final VoidCallback onToggleLike;
   final VoidCallback onDoubleTapLike;
@@ -25,30 +29,18 @@ class FeedVideoPreviewCard extends StatefulWidget {
 
 class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
     with WidgetsBindingObserver {
-  late final VideoPlayerController _controller;
-  late final Future<void> _initializeVideoFuture;
   bool _resumeAfterLifecycle = false;
   bool _manuallyPaused = false;
   bool _showLikeBurst = false;
   Timer? _likeBurstTimer;
 
+  VideoPlayerController get _controller => widget.controller;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.video.videoUrl),
-      videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: true,
-      ),
-    );
-    _initializeVideoFuture = _initializeController();
-  }
-
-  Future<void> _initializeController() async {
-    await _controller.initialize();
-    await _controller.setLooping(true);
-    await _syncPlayback();
+    _syncPlaybackAfterInitialize(widget.initializeVideoFuture);
   }
 
   Future<void> _syncPlayback() async {
@@ -68,11 +60,31 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
   void didUpdateWidget(covariant FeedVideoPreviewCard oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (oldWidget.controller != widget.controller ||
+        oldWidget.initializeVideoFuture != widget.initializeVideoFuture) {
+      _manuallyPaused = false;
+      _syncPlaybackAfterInitialize(widget.initializeVideoFuture);
+    }
+
     if (oldWidget.isActive != widget.isActive) {
       if (!widget.isActive) {
         _manuallyPaused = false;
       }
       _syncPlayback();
+    }
+  }
+
+  Future<void> _syncPlaybackAfterInitialize(
+      Future<void> initializeFuture) async {
+    try {
+      await initializeFuture;
+      if (!mounted) {
+        return;
+      }
+
+      await _syncPlayback();
+    } catch (_) {
+      // The FutureBuilder below renders the error state.
     }
   }
 
@@ -168,7 +180,6 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _likeBurstTimer?.cancel();
-    _controller.dispose();
     super.dispose();
   }
 
@@ -185,14 +196,11 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
         fit: StackFit.expand,
         children: [
           FutureBuilder<void>(
-            future: _initializeVideoFuture,
+            future: widget.initializeVideoFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const ColoredBox(
-                  color: Colors.black,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                return _VideoLoadingState(
+                  video: widget.video,
                 );
               }
 
@@ -348,6 +356,77 @@ class _VideoPlayerSurface extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _VideoLoadingState extends StatelessWidget {
+  const _VideoLoadingState({
+    required this.video,
+  });
+
+  final FeedVideo video;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _VideoThumbnailBackdrop(video: video),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0x26000000),
+                Color(0x00000000),
+                Color(0xCC000000),
+              ],
+            ),
+          ),
+        ),
+        const Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VideoThumbnailBackdrop extends StatelessWidget {
+  const _VideoThumbnailBackdrop({
+    required this.video,
+  });
+
+  final FeedVideo video;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.black,
+      ),
+      child: Image.network(
+        video.thumbnailUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.grey.shade900,
+                  Colors.black,
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

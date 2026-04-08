@@ -4,6 +4,7 @@ class FeedVideo {
     required this.creator,
     required this.description,
     required this.videoUrl,
+    required this.thumbnailUrl,
     this.isLiked = false,
     required this.likes,
     required this.comments,
@@ -14,6 +15,7 @@ class FeedVideo {
   final String creator;
   final String description;
   final String videoUrl;
+  final String thumbnailUrl;
   final bool isLiked;
   final int likes;
   final int comments;
@@ -24,6 +26,7 @@ class FeedVideo {
     String? creator,
     String? description,
     String? videoUrl,
+    String? thumbnailUrl,
     bool? isLiked,
     int? likes,
     int? comments,
@@ -34,6 +37,7 @@ class FeedVideo {
       creator: creator ?? this.creator,
       description: description ?? this.description,
       videoUrl: videoUrl ?? this.videoUrl,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       isLiked: isLiked ?? this.isLiked,
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
