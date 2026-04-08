@@ -24,7 +24,7 @@ class FeedVideoPreviewCard extends StatefulWidget {
 }
 
 class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
-    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+    with WidgetsBindingObserver {
   late final VideoPlayerController _controller;
   late final Future<void> _initializeVideoFuture;
   bool _resumeAfterLifecycle = false;
@@ -174,7 +174,6 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final textTheme = Theme.of(context).textTheme;
     final viewPadding = MediaQuery.viewPaddingOf(context);
     final contentBottomInset = viewPadding.bottom + 28;
@@ -319,42 +318,10 @@ class _FeedVideoPreviewCardState extends State<FeedVideoPreviewCard>
               );
             },
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 20,
-              ),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.32),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Text(
-                    widget.isActive ? 'Now Playing' : 'Paused',
-                    style: textTheme.labelMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
-
-  @override
-  bool get wantKeepAlive => true;
 }
 
 class _VideoPlayerSurface extends StatelessWidget {
@@ -421,7 +388,6 @@ class _ActionColumn extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _ProfileActionBadge(),
         const SizedBox(height: 22),
         _ActionStat(
           icon: video.isLiked ? Icons.favorite : Icons.favorite_border,
@@ -440,55 +406,6 @@ class _ActionColumn extends StatelessWidget {
           value: video.shares,
         ),
       ],
-    );
-  }
-}
-
-class _ProfileActionBadge extends StatelessWidget {
-  const _ProfileActionBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 46,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.black,
-              border: Border.all(color: Colors.white, width: 1.6),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.music_note_rounded,
-                color: Color(0xFF25F4EE),
-                size: 24,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -6,
-            child: Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFF2D55),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

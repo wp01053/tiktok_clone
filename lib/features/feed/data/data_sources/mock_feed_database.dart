@@ -1,79 +1,53 @@
 import '../models/feed_video.dart';
 
 class MockFeedDatabase {
-  MockFeedDatabase()
-      : _videos = List<FeedVideo>.from(_seedVideos, growable: true);
+  MockFeedDatabase();
 
-  final List<FeedVideo> _videos;
+  final List<FeedVideo> _videos = <FeedVideo>[];
 
-  static const List<FeedVideo> _seedVideos = [
-    FeedVideo(
-      id: 'video-1',
-      creator: '@demo_creator',
-      description: 'Network video playback test clip.',
-      videoUrl:
-          'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
-      likes: 12400,
-      comments: 328,
-      shares: 91,
-    ),
-    FeedVideo(
-      id: 'video-2',
-      creator: '@campus_daily',
-      description: 'Sample clip for feed item rendering.',
-      videoUrl:
-          'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-      likes: 8200,
-      comments: 112,
-      shares: 44,
-    ),
-    FeedVideo(
-      id: 'video-3',
-      creator: '@flutter_lab',
-      description: 'Preview item for scrolling feed setup.',
-      videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      likes: 15400,
-      comments: 520,
-      shares: 133,
-    ),
-    FeedVideo(
-      id: 'video-4',
-      creator: '@design_notes',
-      description: 'Additional sample for network playback.',
-      videoUrl: 'https://www.w3schools.com/howto/rain.mp4',
-      likes: 4100,
-      comments: 64,
-      shares: 20,
-    ),
-    FeedVideo(
-      id: 'video-5',
-      creator: '@travel_cut',
-      description: 'Extra clip for feed data testing.',
-      videoUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
-      likes: 9900,
-      comments: 205,
-      shares: 57,
-    ),
+  static const List<String> _videoUrlPool = [
+    'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+    'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    'https://www.w3schools.com/html/mov_bbb.mp4',
+    'https://www.w3schools.com/howto/rain.mp4',
+    'https://media.w3.org/2010/05/video/movie_300.mp4',
   ];
 
-  List<FeedVideo> get previewItems => _videos.take(3).toList(growable: false);
+  static const List<String> _creatorPool = [
+    '@daily.loop',
+    '@campus.cut',
+    '@creator.lab',
+    '@city.frame',
+    '@travel.reel',
+    '@night.snap',
+    '@weekend.flow',
+  ];
+
+  static const List<String> _descriptionPool = [
+    'Quick motion test clip for the vertical feed.',
+    'Looping network video prepared for swipe playback.',
+    'Mock upload used to verify overlay and interaction.',
+    'Short-form sample with stable public mp4 playback.',
+    'Feed pagination preview item for assignment review.',
+    'Repeated source with fresh metadata for endless scrolling.',
+    'Scrolling transition sample for autoplay validation.',
+  ];
+
+  List<FeedVideo> get previewItems {
+    _ensureItemCount(FeedVideoPreviewCount.value);
+    return _videos.take(FeedVideoPreviewCount.value).toList(growable: false);
+  }
 
   List<FeedVideo> fetchPage({
     required int pageKey,
     required int pageSize,
   }) {
-    final startIndex = pageKey * pageSize;
-    if (startIndex >= _videos.length) {
-      return const [];
-    }
-
+    final startIndex = (pageKey - 1) * pageSize;
     final endIndex = startIndex + pageSize;
-    return _videos
-        .sublist(
-          startIndex,
-          endIndex > _videos.length ? _videos.length : endIndex,
-        )
-        .toList(growable: false);
+
+    _ensureItemCount(endIndex);
+
+    return _videos.sublist(startIndex, endIndex).toList(growable: false);
   }
 
   FeedVideo? toggleLike(String videoId) {
@@ -112,4 +86,30 @@ class MockFeedDatabase {
     _videos[index] = updated;
     return updated;
   }
+
+  void _ensureItemCount(int targetCount) {
+    while (_videos.length < targetCount) {
+      _videos.add(_createVideo(_videos.length));
+    }
+  }
+
+  FeedVideo _createVideo(int index) {
+    final creator = _creatorPool[index % _creatorPool.length];
+    final description = _descriptionPool[index % _descriptionPool.length];
+    final videoUrl = _videoUrlPool[index % _videoUrlPool.length];
+
+    return FeedVideo(
+      id: 'video-${index + 1}',
+      creator: creator,
+      description: '$description #${index + 1}',
+      videoUrl: videoUrl,
+      likes: 3200 + ((index * 913) % 78000),
+      comments: 48 + ((index * 37) % 3400),
+      shares: 12 + ((index * 19) % 1400),
+    );
+  }
+}
+
+final class FeedVideoPreviewCount {
+  static const int value = 3;
 }

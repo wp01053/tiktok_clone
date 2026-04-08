@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 import '../../data/models/feed_video.dart';
 import '../view_models/feed_view_model.dart';
@@ -27,7 +28,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     super.dispose();
   }
 
-  bool _handleScrollEnd(ScrollEndNotification notification) {
+  bool _handleScrollEnd(
+    ScrollEndNotification notification,
+    int itemCount,
+  ) {
     if (notification.depth != 0) {
       return false;
     }
@@ -37,12 +41,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       return false;
     }
 
-    final state = ref.read(feedViewModelProvider);
-    if (state.items.isEmpty) {
+    if (itemCount == 0) {
       return false;
     }
 
-    final settledIndex = page.round().clamp(0, state.items.length - 1);
+    final settledIndex = page.round().clamp(0, itemCount);
     ref.read(feedViewModelProvider.notifier).setCurrentIndex(settledIndex);
     return false;
   }
@@ -54,59 +57,123 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          NotificationListener<ScrollEndNotification>(
-            onNotification: _handleScrollEnd,
-            child: PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              itemCount: state.items.length,
-              itemBuilder: (context, index) {
-                final FeedVideo video = state.items[index];
+      body: PagingListener<int, FeedVideo>(
+        controller: notifier.pagingController,
+        builder: (context, pagingState, fetchNextPage) {
+          final itemCount = pagingState.items?.length ?? 0;
 
-                return FeedVideoPreviewCard(
-                  video: video,
-                  isActive: index == state.currentIndex,
-                  onToggleLike: () {
-                    notifier.toggleLike(video.id);
-                  },
-                  onDoubleTapLike: () {
-                    notifier.likeWithDoubleTap(video.id);
-                  },
-                );
-              },
+          return NotificationListener<ScrollEndNotification>(
+            onNotification: (notification) =>
+                _handleScrollEnd(notification, itemCount),
+            child: PagedPageView<int, FeedVideo>(
+              state: pagingState,
+              fetchNextPage: fetchNextPage,
+              pageController: _pageController,
+              scrollDirection: Axis.vertical,
+              builderDelegate: PagedChildBuilderDelegate<FeedVideo>(
+                invisibleItemsThreshold: 2,
+                firstPageProgressIndicatorBuilder: (context) {
+                  return const _FeedStatusView(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  );
+                },
+                newPageProgressIndicatorBuilder: (context) {
+                  return const _FeedStatusView(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  );
+                },
+                firstPageErrorIndicatorBuilder: (context) {
+                  return _FeedErrorView(
+                    onRetry: fetchNextPage,
+                  );
+                },
+                newPageErrorIndicatorBuilder: (context) {
+                  return _FeedErrorView(
+                    onRetry: fetchNextPage,
+                  );
+                },
+                noItemsFoundIndicatorBuilder: (context) {
+                  return const _FeedStatusView(
+                    child: Text(
+                      'No videos available.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+                itemBuilder: (context, video, index) {
+                  return FeedVideoPreviewCard(
+                    key: ValueKey(video.id),
+                    video: video,
+                    isActive: index == state.currentIndex,
+                    onToggleLike: () {
+                      notifier.toggleLike(video.id);
+                    },
+                    onDoubleTapLike: () {
+                      notifier.likeWithDoubleTap(video.id);
+                    },
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FeedStatusView extends StatelessWidget {
+  const _FeedStatusView({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: child,
+      ),
+    );
+  }
+}
+
+class _FeedErrorView extends StatelessWidget {
+  const _FeedErrorView({
+    required this.onRetry,
+  });
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FeedStatusView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Video feed failed to load.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [],
-              ),
-            ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
           ),
-          if (state.isLoadingMore)
-            const Positioned(
-              right: 20,
-              bottom: 32,
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.8,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          if (state.items.isEmpty)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
         ],
       ),
     );

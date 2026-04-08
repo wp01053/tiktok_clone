@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
+import '../../data/models/feed_video.dart';
 import '../../data/repositories/feed_repository.dart';
 import '../../data/repositories/mock_feed_repository.dart';
 import 'feed_state.dart';
@@ -14,45 +16,33 @@ final feedViewModelProvider =
 );
 
 class FeedViewModel extends AutoDisposeNotifier<FeedState> {
+  late FeedRepository _repository;
+  PagingController<int, FeedVideo>? _pagingController;
+
+  PagingController<int, FeedVideo> get pagingController => _pagingController!;
+
   @override
   FeedState build() {
-    final repository = ref.watch(feedRepositoryProvider);
-    final initialItems = repository.previewItems;
-
-    return FeedState(
-      items: initialItems,
-      hasMore: initialItems.length == const FeedState().pageSize,
+    _repository = ref.watch(feedRepositoryProvider);
+    _pagingController ??= PagingController<int, FeedVideo>(
+      getNextPageKey: (pagingState) => pagingState.nextIntPageKey,
+      fetchPage: (pageKey) => _repository.fetchPage(
+        pageKey: pageKey,
+        pageSize: FeedState.defaultPageSize,
+      ),
     );
+
+    ref.onDispose(() {
+      _pagingController?.dispose();
+      _pagingController = null;
+    });
+
+    return const FeedState();
   }
 
   void setCurrentIndex(int index) {
-    state = state.copyWith(currentIndex: index);
-
-    if (index >= state.items.length - 2) {
-      loadNextPage();
-    }
-  }
-
-  Future<void> loadNextPage() async {
-    if (state.isLoadingMore || !state.hasMore) {
-      return;
-    }
-
-    state = state.copyWith(isLoadingMore: true);
-
-    final nextItems = await ref.read(feedRepositoryProvider).fetchPage(
-          pageKey: state.nextPageKey,
-          pageSize: state.pageSize,
-        );
-
     state = state.copyWith(
-      items: [
-        ...state.items,
-        ...nextItems,
-      ],
-      nextPageKey: state.nextPageKey + 1,
-      isLoadingMore: false,
-      hasMore: nextItems.length == state.pageSize,
+      currentIndex: index < 0 ? 0 : index,
     );
   }
 
@@ -74,12 +64,9 @@ class FeedViewModel extends AutoDisposeNotifier<FeedState> {
     _replaceVideo(updated);
   }
 
-  void _replaceVideo(updatedVideo) {
-    state = state.copyWith(
-      items: [
-        for (final video in state.items)
-          if (video.id == updatedVideo.id) updatedVideo else video,
-      ],
+  void _replaceVideo(FeedVideo updatedVideo) {
+    pagingController.mapItems(
+      (video) => video.id == updatedVideo.id ? updatedVideo : video,
     );
   }
 }
